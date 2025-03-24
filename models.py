@@ -15,9 +15,7 @@ class Users(Base):
     is_active       = Column(Boolean, default=True)
     role            = Column(String)
 
-class Goods(Base):
-    __tablename__ = "goods"
-
+class Goods():
     id              = Column(Integer, primary_key=True, index=True)
     name            = Column(String)
     price           = Column(Float)
@@ -26,16 +24,14 @@ class Goods(Base):
     quantity        = Column(Integer, default=0)
     image_url       = Column(String)
 
-    __mapper_args__ = {
-        "polymorphic_identity": "goods",
-        "polymorphic_on": category,
-    }
+class Headphones(Goods,Base):
+    __tablename__ = "headphones"
 
-class Headphones(Goods):
     Something_about_headphones  = Column(Float)
     
-class Smartphones(Goods):
-    #__tablename__ = "smatrpones"
+    
+class Smartphones(Goods,Base):
+    __tablename__ = "smatrpones"
 
     Display_diagonal        = Column(Float)
     Screen_resolution       = Column(String)
@@ -68,10 +64,6 @@ class Smartphones(Goods):
     Warranty_period         = Column(String) 
     Country_of_manufacture  = Column(String)
     Brand = Column(String)
-
-    __mapper_args__ = {
-        "polymorphic_identity": "smartphones",
-    }
 
 class Basket(Base):
     __tablename__ = "basket"

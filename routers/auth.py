@@ -1,12 +1,17 @@
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from database import SessionLocal
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from starlette import status
 from pydantic import BaseModel, Field
 from models import Users
 from passlib.context import CryptContext
-
+from jose import jwt, JWTError
+utc_plus_2 = timezone(timedelta(hours=2))
+SECRET_KEY = "13f4493407503897508137ab8897987cd987987fdf897"
+ALGORITHM = "HS256"
 
 
 router = APIRouter(
@@ -37,13 +42,21 @@ db_dependancy = Annotated[Session, Depends(get_db)]
 #Это аннотация, которая говорит FastAPI, что это зависимость, которая возвращает объект сессии.
 
 def authenticate_user(login: str, password: str, db: db_dependancy):
-    user = db.query(Users).filter((Users.email == login) or (Users.phone_number == login)).first()
+    user = db.query(Users).filter(or_(Users.email == login, Users.phone_number == login)).first()
     if user is None:
         raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail = "User not found")
     if not bcrypt_context.verify(password, user.hashed_password): 
         raise HTTPException(status_code = status.HTTP_406_NOT_ACCEPTABLE, detail = "Wrong password")
     return user
 
+def create_access_token(login: str, user_id:str, role:str, expires_delta: timedelta):
+    encode = {"sub": login, "id": user_id, "role": role}
+    expires = datetime.now(timezone.utc) + expires_delta
+    encode.update({"exp": expires})
+    return jwt.encode(encode, SECRET_KEY, algorithm = ALGORITHM)
+
+
+############END POINTS############
 @router.post("/create_user", status_code= status.HTTP_201_CREATED)
 async def create_user(db: db_dependancy, new_user_request: CreateUserRequest):
     check_user = db.query(Users).filter((Users.email == new_user_request.email)).first()
@@ -69,10 +82,12 @@ async def create_user(db: db_dependancy, new_user_request: CreateUserRequest):
 
 
 @router.get("/login", status_code= status.HTTP_200_OK)
-async def get_access_token():
-
-
-
+async def get_access_token(login: str, password: str, db: db_dependancy):
+    user = authenticate_user(login, password, db)
+    if(user is None):
+        raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail = "User not found")
+    token = create_access_token(login, user.id, user.role ,timedelta(days = 365))
+    return {"access_token":token, "token_type":"bearer"}
 
 
 

@@ -1,51 +1,91 @@
 from database import Base
-from sqlalchemy import Column, Integer, Float, String, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, Float, String, Boolean, ForeignKey, DateTime
+from datetime import datetime, timezone, timedelta
 
 
 class Users(Base):
     __tablename__ = 'users'
 
-    id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, unique=True)
-    phone_number = Column(String)
-    first_name = Column(String)
-    last_name = Column(String)
+    id              = Column(Integer, primary_key=True, index=True)
+    email           = Column(String, unique=True)
+    phone_number    = Column(String)
+    first_name      = Column(String)
+    last_name       = Column(String)
     hashed_password = Column(String)
-    is_active = Column(Boolean, default=True)
-    role = Column(String)
+    is_active       = Column(Boolean, default=True)
+    role            = Column(String)
 
-class Smartphones(Base):
-    __tablename__ = "smatrpones"
+class Goods(Base):
+    __tablename__ = "goods"
 
-    id = Column(Integer, primary_key=True, index=True)
-    Display_diagonal = Column(Float)
-    Screen_resolution = Column(String)
-    Screen_type = Column(String)
-    Screen_refresh_rate = Column(String)
+    id              = Column(Integer, primary_key=True, index=True)
+    name            = Column(String)
+    price           = Column(Float)
+    description     = Column(String)
+    category        = Column(String)
+    quantity        = Column(Integer, default=0)
+    image_url       = Column(String)
+
+    __mapper_args__ = {
+        "polymorphic_identity": "goods",
+        "polymorphic_on": category,
+    }
+
+class Smartphones(Goods):
+    #__tablename__ = "smatrpones"
+
+    Display_diagonal        = Column(Float)
+    Screen_resolution       = Column(String)
+    Screen_type             = Column(String, default=None)
+    Screen_refresh_rate     = Column(String, default=None)
     Communication_standards = Column(String)
-    Number_of_SIM_cards = Column(Integer)
-    SIM_card_size = Column(String)
-    e_SIM_support = Column(Boolean)
-    Processor_Model = Column(String)
-    Number_of_Cores = Column(Integer)
-    RAM = Column(String)
-    Built_in_Memory = Column(String)
-    Expandable_Memory = Column(String)
-    Main_camera = Column(String)
-    Front_camera = Column(String)
-    Maximum_video_resolution = Column(String)
-    Stabilization = Column(String)
-    Wi_Fi_Standards = Column(String)
-    Bluetooth = Column(String)
-    Navigation_System = Column(String)
-    NFC = Column(Boolean)
-    USB_Interface = Column(String)
-    Battery_capacity = Column(String)
-    Height = Column(Integer)
-    Width = Column(Integer)
-    Depth = Column(Integer)
-    Weight = Column(Integer)
-    Manufacturer_color = Column(String)
-    Warranty_period = Column(String) 
-    Country_of_manufacture = Column(String)
+    Number_of_SIM_cards     = Column(Integer)
+    SIM_card_size           = Column(String)
+    e_SIM_support           = Column(Boolean)
+    Processor_Model         = Column(String, default=None)
+    Number_of_Cores         = Column(Integer, default=None)
+    RAM                     = Column(String, default=None)
+    Built_in_Memory         = Column(String)
+    Expandable_Memory       = Column(String, default=None)
+    Main_camera             = Column(String, default=None)
+    Front_camera            = Column(String, default=None)
+    Maximum_video_resolution= Column(String, default=None)
+    Stabilization           = Column(String, default=None)
+    Wi_Fi_Standards         = Column(String, default=None)
+    Bluetooth               = Column(String, default=None)
+    Navigation_System       = Column(String, default=None)
+    NFC                     = Column(Boolean, default=None)
+    USB_Interface           = Column(String, default=None)
+    Battery_capacity        = Column(String, default=None)
+    Height                  = Column(Integer)
+    Width                   = Column(Integer)
+    Depth                   = Column(Integer)
+    Weight                  = Column(Integer)
+    Manufacturer_color      = Column(String)
+    Warranty_period         = Column(String) 
+    Country_of_manufacture  = Column(String)
     Brand = Column(String)
+
+    __mapper_args__ = {
+        "polymorphic_identity": "smartphones",
+    }
+
+class Basket(Base):
+    __tablename__ = "basket"
+    id              = Column(Integer, primary_key=True, index=True)  
+    goods_id        = Column(Integer, ForeignKey("goods.id"))
+    user_id         = Column(Integer, ForeignKey("users.id"))
+    quantity        = Column(Integer)
+    price           = Column(Float)
+
+utc_plus_2 = timezone(timedelta(hours=2))
+class Orders(Base):
+    __tablename__ = "orders"
+
+    order_number    = Column(Integer, primary_key=True, index=True)
+    user_id         = Column(Integer, ForeignKey("users.id"))
+    total_price     = Column(Float, nullable=False)
+    status          = Column(String, default="pending")
+    created_at      = Column(DateTime, default=datetime.now(utc_plus_2))
+    updated_at      = Column(DateTime, default=datetime.now(utc_plus_2), onupdate=datetime.now(utc_plus_2))
+

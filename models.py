@@ -8,7 +8,7 @@ class Users(Base):
 
     id              = Column(Integer, primary_key=True, index=True)
     email           = Column(String, unique=True)
-    phone_number    = Column(String)
+    phone_number    = Column(String, unique=True)
     first_name      = Column(String)
     last_name       = Column(String)
     hashed_password = Column(String)
@@ -31,6 +31,9 @@ class Goods(Base):
         "polymorphic_on": category,
     }
 
+class Headphones(Goods):
+    Something_about_headphones  = Column(Float)
+    
 class Smartphones(Goods):
     #__tablename__ = "smatrpones"
 

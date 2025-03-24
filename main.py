@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from database import engine
 from models import Base
-from routers import admin
+from routers import auth
 app = FastAPI()
 
 Base.metadata.create_all(bind = engine) #создать таблицы в БД, если их ещё нема
@@ -16,3 +16,4 @@ except Exception as e:
 async def test():
     return{"message": "Hello World"}
 
+app.include_router(auth.router)

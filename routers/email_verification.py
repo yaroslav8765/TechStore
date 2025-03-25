@@ -2,13 +2,12 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Depends
 from jose import jwt
 from datetime import datetime, timedelta, timezone
-#from routers.auth import SECRET_KEY, ALGORITHM
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 from sqlalchemy.orm import Session
-
 from database import SessionLocal
 from models import Users
 from config import settings
+from starlette import status
 
 router = APIRouter(
     prefix = "/verify_email",
@@ -41,7 +40,7 @@ conf = ConnectionConfig(
     MAIL_USERNAME="pechorkin2014@gmail.com",
     MAIL_PASSWORD=settings.MAIL_PASSWORD,
     MAIL_FROM="pechorkin2014@gmail.com",
-    MAIL_PORT=587,  # Порт для SSL
+    MAIL_PORT=587,
     MAIL_SERVER="smtp.gmail.com",
     MAIL_STARTTLS=True,
     MAIL_SSL_TLS=False  
@@ -66,11 +65,11 @@ async def send_verification_email(email: str):
 async def verify_email(token: str, db: db_dependancy):
     email = decode_verification_token(token)
     if not email:
-        raise HTTPException(status_code=400, detail="Invalid or expired token")
+        raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail="Invalid or expired token")
 
     user = db.query(Users).filter(Users.email == email).first()
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail="User not found")
 
     user.is_active = True
     db.commit()

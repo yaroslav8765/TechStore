@@ -5,13 +5,14 @@ from database import SessionLocal
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from starlette import status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 from models import Users
 from passlib.context import CryptContext
 from jose import jwt, JWTError
+from routers.email_verification import send_verification_email
+from config import settings
+
 utc_plus_2 = timezone(timedelta(hours=2))
-SECRET_KEY = "13f4493407503897508137ab8897987cd987987fdf897"
-ALGORITHM = "HS256"
 
 
 router = APIRouter(
@@ -22,7 +23,7 @@ router = APIRouter(
 bcrypt_context = CryptContext(schemes=["bcrypt"],deprecated = "auto") 
 
 class CreateUserRequest(BaseModel):
-    email: str = Field(default = None) #add check email         
+    email: EmailStr  
     phone_number: str = Field(min_length = 10, max_length = 13)  
     first_name: str = Field(min_length = 1, max_length = 50)      
     last_name: str = Field(min_length = 1, max_length = 50, default = None)            
@@ -53,7 +54,7 @@ def create_access_token(login: str, user_id:str, role:str, expires_delta: timede
     encode = {"sub": login, "id": user_id, "role": role}
     expires = datetime.now(timezone.utc) + expires_delta
     encode.update({"exp": expires})
-    return jwt.encode(encode, SECRET_KEY, algorithm = ALGORITHM)
+    return jwt.encode(encode, settings.SECRET_KEY, algorithm = settings.ALGORITHM)
 
 
 ############END POINTS############
@@ -67,6 +68,8 @@ async def create_user(db: db_dependancy, new_user_request: CreateUserRequest):
     if(check_user is not None):
         raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = "User witch such phone number already exists")
     
+    #### here I need to add e-mail verification
+    await send_verification_email(new_user_request.email)
 
     create_user_model = Users(
         email = new_user_request.email,
@@ -74,7 +77,8 @@ async def create_user(db: db_dependancy, new_user_request: CreateUserRequest):
         first_name = new_user_request.first_name,
         last_name = new_user_request.last_name,
         hashed_password = bcrypt_context.hash(new_user_request.hashed_password),
-        role = "user"
+        role = "user",
+        is_active = False
     )
 
     db.add(create_user_model)

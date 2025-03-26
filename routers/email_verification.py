@@ -10,8 +10,8 @@ from config import settings
 from starlette import status
 
 router = APIRouter(
-    prefix = "/verify_email",
-    tags=["verify_email"]
+    prefix = "/verify-email",
+    tags=["verify-email"]
 )
 
 def get_db():
@@ -49,7 +49,7 @@ conf = ConnectionConfig(
 
 async def send_verification_email(email: str):
     token = generate_verification_token(email)
-    verification_url = f"http://127.0.0.1:8000/verify_email/verify-email?token={token}"
+    verification_url = f"http://127.0.0.1:8000/verify-email?token={token}"
 
     message = MessageSchema(
         subject="Verify your email",
@@ -61,7 +61,7 @@ async def send_verification_email(email: str):
     fm = FastMail(conf)
     await fm.send_message(message)
 
-@router.get("/verify-email")
+@router.get("/")
 async def verify_email(token: str, db: db_dependancy):
     email = decode_verification_token(token)
     if not email:

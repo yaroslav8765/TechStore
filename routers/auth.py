@@ -12,7 +12,12 @@ from passlib.context import CryptContext
 from jose import jwt, JWTError
 from routers.email_verification import send_verification_email
 from config import settings
-from phonenumbers import parse, is_valid_number
+
+import phonenumbers
+from phonenumbers import carrier
+from phonenumbers.phonenumberutil import number_type
+
+from email_validator import validate_email
 
 utc_plus_2 = timezone(timedelta(hours=2))
 
@@ -26,21 +31,22 @@ bcrypt_context = CryptContext(schemes=["bcrypt"],deprecated = "auto")
 oauth2_bearer = OAuth2PasswordBearer(tokenUrl = "auth/token")
 
 class CreateUserRequest(BaseModel):
-    email: EmailStr  
-    phone_number: str = Field(min_length = 10, max_length = 13)  
+    #email: EmailStr  
+    #phone_number: str = Field(min_length = 10, max_length = 13)  
+    email_or_phone_number: str
     first_name: str = Field(min_length = 1, max_length = 50)      
     last_name: str = Field(min_length = 1, max_length = 50, default = None)            
-    hashed_password: str      
+    password: str      
 
-    @field_validator('phone_number')
-    def validate_phone_number(cls, value):
-        try:
-            parsed_number = parse(value, "UA") 
-            if not is_valid_number(parsed_number):
-                raise HTTPException(status_code=400, detail="Invalid phone number")
-        except Exception:
-            raise HTTPException(status_code=400, detail="Invalid phone number")
-        return value
+    # @field_validator('phone_number')
+    # def validate_phone_number(cls, value):
+    #     try:
+    #         parsed_number = parse(value, "UA") 
+    #         if not is_valid_number(parsed_number):
+    #             raise HTTPException(status_code=400, detail="Invalid phone number")
+    #     except Exception:
+    #         raise HTTPException(status_code=400, detail="Invalid phone number")
+    #     return value
 
 
 
@@ -88,37 +94,68 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
         raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail = "Could not validate user")
 
 
+def check_if_user_enter_email_or_phone_num(login: str):
+    try:
+        if carrier._is_mobile(number_type(phonenumbers.parse(login))):
+            return "Phone_number"
+    except:
+        try:
+            email = validate_email(login)
+            return "Email"
+        except:
+            return "Something wrong with your email or phone number. Please, check if your information is correct"
+
 ############END POINTS############
-@router.post("/create_user", status_code= status.HTTP_201_CREATED)
+@router.post("/create-user", status_code= status.HTTP_201_CREATED)
 async def create_user(db: db_dependancy, new_user_request: CreateUserRequest):
-    check_user = db.query(Users).filter((Users.email == new_user_request.email)).first()
 
-    if(check_user is not None):
-        if check_user.is_active == False:
-            await send_verification_email(new_user_request.email)
-            raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = "Please, verify your e-mail. We`ve sent you activation email again")
-        else:
-            raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = "User witch such email already exists")
+    user_enter = check_if_user_enter_email_or_phone_num(new_user_request.email_or_phone_number)
+
+    if(user_enter == "Email"):
+        check_user = db.query(Users).filter((Users.email == new_user_request.email_or_phone_number)).first()
+
+        if(check_user is not None):
+            if check_user.is_active == False:
+                await send_verification_email(new_user_request.email_or_phone_number)
+                raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = "Please, verify your e-mail. We`ve sent you activation email again")
+            else:
+                raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = "User witch such email already exists")
     
+        await send_verification_email(new_user_request.email_or_phone_number)
 
-    check_user = db.query(Users).filter((Users.phone_number == new_user_request.phone_number)).first()
-    if(check_user is not None):
-        raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = "User witch such phone number already exists")
-    
-    await send_verification_email(new_user_request.email)
-
-    create_user_model = Users(
-        email = new_user_request.email,
-        phone_number = new_user_request.phone_number,
+        create_user_model = Users(
+        email = new_user_request.email_or_phone_number,
         first_name = new_user_request.first_name,
         last_name = new_user_request.last_name,
-        hashed_password = bcrypt_context.hash(new_user_request.hashed_password),
+        hashed_password = bcrypt_context.hash(new_user_request.password),
         role = "user",
         is_active = False
-    )
+        )
 
-    db.add(create_user_model)
-    db.commit()
+        db.add(create_user_model)
+        db.commit()
+
+
+    elif(user_enter == "Phone_number"):
+        check_user = db.query(Users).filter((Users.phone_number == new_user_request.email_or_phone_number)).first()
+        if(check_user is not None):
+            raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = "User witch such phone number already exists")
+    
+        #send verification SMS?)
+        create_user_model = Users(
+            phone_number = new_user_request.email_or_phone_number,
+            first_name = new_user_request.first_name,
+            last_name = new_user_request.last_name,
+            hashed_password = bcrypt_context.hash(new_user_request.password),
+            role = "user",
+            is_active = False
+        )
+        db.add(create_user_model)
+        db.commit()
+    
+    else:
+        raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = "User enter invalid phone number or password")
+    
 
 
 @router.post("/token/", response_model=Token)

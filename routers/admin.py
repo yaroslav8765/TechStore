@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from starlette import status
 from sqlalchemy.orm import Session
 from database import SessionLocal
-from models import Users, Orders, Smartphones
+from models import Users, Orders, Smartphones, Goods 
 from routers.auth import get_current_user
 router = APIRouter(
     prefix = "/admin-panel",
@@ -21,15 +21,17 @@ def get_db():
 
 db_dependancy = Annotated[Session, Depends(get_db)]
 user_dependency = Annotated[dict, Depends(get_current_user)]
-
-class AddSmartphoneRequest(BaseModel):
+class AddGoodsRequest(BaseModel):
     name: str
     price: float
     description: str
     category: str
     quantity: int = 0
     image_url: str
+    characteristics_table: str
 
+
+class AddSmartphoneRequest(BaseModel):
     Display_diagonal: float
     Screen_resolution: str
     Screen_type: Optional[str] = None
@@ -122,48 +124,61 @@ async def show_order_info(db: db_dependancy, order_number: int, user: user_depen
     return users_to_return
 
 @router.post("/add-goods/smartphone", status_code = status.HTTP_201_CREATED)
-async def add_goods_to_the_database(db: db_dependancy, user: user_dependency, request: AddSmartphoneRequest):
+async def add_goods_to_the_database(db: db_dependancy, user: user_dependency, characteristics_request: AddSmartphoneRequest, goods_request: AddGoodsRequest):
     if user is None or user.get('role') != 'admin':
         raise HTTPException(status_code=401, detail='Authentication Failed')
     
+
+    add_goods_model = Goods(
+        name=goods_request.name,
+        price=goods_request.price,
+        description=goods_request.description,
+        category=goods_request.category,
+        quantity=goods_request.quantity,
+        image_url=goods_request.image_url,
+        characteristics_table = goods_request.characteristics_table
+    )
+    db.add(add_goods_model)
+    db.commit()
+
+    new_goods_id = db.query(Goods).filter(Goods.name == goods_request.name, 
+                                          Goods.price == goods_request.price, 
+                                          Goods.description == goods_request.description).first()
+    
     add_smartphone_model = Smartphones(
-        name=request.name,
-        price=request.price,
-        description=request.description,
-        category=request.category,
-        quantity=request.quantity,
-        image_url=request.image_url,
-        Display_diagonal=request.Display_diagonal,
-        Screen_resolution=request.Screen_resolution,
-        Screen_type=request.Screen_type,
-        Screen_refresh_rate=request.Screen_refresh_rate,
-        Communication_standards=request.Communication_standards,
-        Number_of_SIM_cards=request.Number_of_SIM_cards,
-        SIM_card_size=request.SIM_card_size,
-        e_SIM_support=request.e_SIM_support,
-        Processor_Model=request.Processor_Model,
-        Number_of_Cores=request.Number_of_Cores,
-        RAM=request.RAM,
-        Built_in_Memory=request.Built_in_Memory,
-        Expandable_Memory=request.Expandable_Memory,
-        Main_camera=request.Main_camera,
-        Front_camera=request.Front_camera,
-        Maximum_video_resolution=request.Maximum_video_resolution,
-        Stabilization=request.Stabilization,
-        Wi_Fi_Standards=request.Wi_Fi_Standards,
-        Bluetooth=request.Bluetooth,
-        Navigation_System=request.Navigation_System,
-        NFC=request.NFC,
-        USB_Interface=request.USB_Interface,
-        Battery_capacity=request.Battery_capacity,
-        Height=request.Height,
-        Width=request.Width,
-        Depth=request.Depth,
-        Weight=request.Weight,
-        Manufacturer_color=request.Manufacturer_color,
-        Warranty_period=request.Warranty_period,
-        Country_of_manufacture=request.Country_of_manufacture,
-        Brand=request.Brand,
+        
+        goods_id                            = new_goods_id.id,
+        Display_diagonal                    = characteristics_request.Display_diagonal,
+        Screen_resolution                   = characteristics_request.Screen_resolution,
+        Screen_type                         = characteristics_request.Screen_type,
+        Screen_refresh_rate                 = characteristics_request.Screen_refresh_rate,
+        Communication_standards             = characteristics_request.Communication_standards,
+        Number_of_SIM_cards                 = characteristics_request.Number_of_SIM_cards,
+        SIM_card_size                       = characteristics_request.SIM_card_size,
+        e_SIM_support                       = characteristics_request.e_SIM_support,
+        Processor_Model                     = characteristics_request.Processor_Model,
+        Number_of_Cores                     = characteristics_request.Number_of_Cores,
+        RAM                                 = characteristics_request.RAM,
+        Built_in_Memory                     = characteristics_request.Built_in_Memory,
+        Expandable_Memory                   = characteristics_request.Expandable_Memory,
+        Main_camera                         = characteristics_request.Main_camera,
+        Front_camera                        = characteristics_request.Front_camera,
+        Maximum_video_resolution            = characteristics_request.Maximum_video_resolution,
+        Stabilization                       = characteristics_request.Stabilization,
+        Wi_Fi_Standards                     = characteristics_request.Wi_Fi_Standards,
+        Bluetooth                           = characteristics_request.Bluetooth,
+        Navigation_System                   = characteristics_request.Navigation_System,
+        NFC                                 = characteristics_request.NFC,
+        USB_Interface                       = characteristics_request.USB_Interface,
+        Battery_capacity                    = characteristics_request.Battery_capacity,
+        Height                              = characteristics_request.Height,
+        Width                               = characteristics_request.Width,
+        Depth                               = characteristics_request.Depth,
+        Weight                              = characteristics_request.Weight,
+        Manufacturer_color                  = characteristics_request.Manufacturer_color,
+        Warranty_period                     = characteristics_request.Warranty_period,
+        Country_of_manufacture              = characteristics_request.Country_of_manufacture,
+        Brand                               = characteristics_request.Brand,
     )
 
     db.add(add_smartphone_model)

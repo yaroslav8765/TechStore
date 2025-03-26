@@ -15,24 +15,24 @@ class Users(Base):
     is_active       = Column(Boolean, default=True)
     role            = Column(String)
 
-class Goods():
-    id              = Column(Integer, primary_key=True, index=True)
-    name            = Column(String)
-    price           = Column(Float)
-    description     = Column(String)
-    category        = Column(String)
-    quantity        = Column(Integer, default=0)
-    image_url       = Column(String)
+class Goods(Base):
+    __tablename__ = 'goods'
 
-class Headphones(Goods,Base):
-    __tablename__ = "headphones"
+    id                      = Column(Integer, primary_key=True, index=True)
+    name                    = Column(String)
+    price                   = Column(Float)
+    description             = Column(String)
+    category                = Column(String)
+    quantity                = Column(Integer, default=0)
+    image_url               = Column(String)
+    characteristics_table   = Column(String)
 
-    Something_about_headphones  = Column(Float)
     
-    
-class Smartphones(Goods,Base):
-    __tablename__ = "smatrpones"
+class Smartphones(Base):
+    __tablename__ = "smartphones"
 
+    id                      = Column(Integer, primary_key=True, index=True)
+    goods_id                = Column(Integer, ForeignKey("goods.id"))
     Display_diagonal        = Column(Float)
     Screen_resolution       = Column(String)
     Screen_type             = Column(String, default=None)

@@ -6,7 +6,7 @@ from database import SessionLocal
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from starlette import status
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, Field
 from models import Users
 from passlib.context import CryptContext
 from jose import jwt, JWTError
@@ -31,22 +31,10 @@ bcrypt_context = CryptContext(schemes=["bcrypt"],deprecated = "auto")
 oauth2_bearer = OAuth2PasswordBearer(tokenUrl = "auth/token")
 
 class CreateUserRequest(BaseModel):
-    #email: EmailStr  
-    #phone_number: str = Field(min_length = 10, max_length = 13)  
     email_or_phone_number: str
     first_name: str = Field(min_length = 1, max_length = 50)      
     last_name: str = Field(min_length = 1, max_length = 50, default = None)            
     password: str      
-
-    # @field_validator('phone_number')
-    # def validate_phone_number(cls, value):
-    #     try:
-    #         parsed_number = parse(value, "UA") 
-    #         if not is_valid_number(parsed_number):
-    #             raise HTTPException(status_code=400, detail="Invalid phone number")
-    #     except Exception:
-    #         raise HTTPException(status_code=400, detail="Invalid phone number")
-    #     return value
 
 
 

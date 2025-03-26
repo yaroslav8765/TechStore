@@ -67,11 +67,11 @@ class Smartphones(Goods,Base):
 
 class Basket(Base):
     __tablename__ = "basket"
-    id              = Column(Integer, primary_key=True, index=True)  
-    goods_id        = Column(Integer, ForeignKey("goods.id"))
-    user_id         = Column(Integer, ForeignKey("users.id"))
-    quantity        = Column(Integer)
-    price           = Column(Float)
+    id                      = Column(Integer, primary_key=True, index=True)  
+    goods_id                = Column(Integer, ForeignKey("goods.id"))
+    user_id                 = Column(Integer, ForeignKey("users.id"))
+    quantity                = Column(Integer)
+    price_for_the_one       = Column(Float)
 
 utc_plus_2 = timezone(timedelta(hours=2))
 class Orders(Base):

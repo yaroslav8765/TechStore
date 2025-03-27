@@ -1,13 +1,13 @@
 from fastapi import APIRouter,Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from database import SessionLocal
 from sqlalchemy.orm import Session
 from typing import Annotated
 from routers.auth import get_current_user
 from starlette import status
-from models import Goods, Basket, OrderItem, Orders
-
-
+from models import Goods, Basket, OrderItem, Orders, Users
+from routers.email_verification import send_verification_email
+from routers.auth import check_if_user_enter_email_or_phone_num
 router = APIRouter(
     prefix = "/user",
     tags=["/user"]
@@ -26,15 +26,15 @@ user_dependency = Annotated[dict, Depends(get_current_user)]
 
 class AddToTheBasketRequest(BaseModel):
     goods_id: int            
-    quantity: int
+    quantity: int = Field(gt = 1)
 
 class EditTheBasketRequest(BaseModel):
     goods_id: int            
-    new_quantity: int
+    new_quantity: int = Field(gt = 1)
 
 class CreateOrderRequest(BaseModel):
-    reciever_name: str
-    shipping_adress: str
+    reciever_name: str = Field(min_length = 2, max_length = 30)
+    shipping_adress: str = Field(min_length = 2, max_length = 100)
 
     model_config = {
         "json_schema_extra" : {
@@ -45,6 +45,22 @@ class CreateOrderRequest(BaseModel):
         }
     }
 
+class EditUserRequest(BaseModel):
+    First_name: str = Field(min_length = 2, max_length = 30)
+    Last_name: str = Field(min_length = 2, max_length = 50)
+    phone_number: str 
+    email: str
+
+    model_config = {
+        "json_schema_extra" : {
+            "example" : {
+                "First_name" : "Empty", 
+                "Last_name" : "Empty",
+                "phone_number" : "Empty",
+                "email" : "Empty"
+            }
+        }
+    }
 
 @router.get("/show-basket", status_code = status.HTTP_200_OK)
 async def show_basket(db: db_dependancy, user: user_dependency):
@@ -189,3 +205,57 @@ async def cancel_order(db: db_dependancy, user: user_dependency, order_number: i
     order_info.status = "canceled"
     db.add(order_info)
     db.commit()
+
+@router.put("/edit-user-info", status_code = status.HTTP_202_ACCEPTED)
+async def edit_user(db: db_dependancy, user: user_dependency, request: EditUserRequest):
+    if user is None or user.get("username") is None:
+        return {"message": "Sorry, but at this moment if you want to add good to the basket you need to create accout first"}
+        #here I want to add LocalStorage so user can add goods to the basket without registration 
+        #and list of the goods will be stored in the local storage even if user closed the site
+    user_model = db.query(Users).filter(Users.id == user.get("id")).first()
+    permission_to_change_email = False
+    permission_to_change_number = False
+
+    if request.First_name != "Empty":
+        user_model.first_name = request.First_name
+
+    if request.Last_name != "Empty":
+        user_model.last_name = request.Last_name
+
+    if request.email != "Empty":
+        if check_if_user_enter_email_or_phone_num(request.email) == "Email":
+            is_user_with_such_email_exist = db.query(Users).filter(Users.email == request.email).first()
+            if is_user_with_such_email_exist is None:
+                permission_to_change_email = True
+            else:
+                raise HTTPException(status_code = status.HTTP_422_UNPROCESSABLE_ENTITY, detail = "User with such email already exist")
+            
+    if request.phone_number != "Empty":
+        if check_if_user_enter_email_or_phone_num(request.phone_number) == "Phone_number":
+            is_user_with_such_number_exist = db.query(Users).filter(Users.phone_number == request.phone_number).first()
+            if is_user_with_such_number_exist is None:
+                permission_to_change_number = True
+
+            else:
+                raise HTTPException(status_code = status.HTTP_422_UNPROCESSABLE_ENTITY, detail = "User with such phone number already exist")
+
+    
+    if request.email != "Empty":
+        if check_if_user_enter_email_or_phone_num(request.email) == "Something wrong with your email or phone number. Please, check if your information is correct":
+            raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = "Something wrong with your email. Please, check if your information is correct")
+    if request.phone_number != "Empty":
+        if check_if_user_enter_email_or_phone_num(request.phone_number) == "Something wrong with your email or phone number. Please, check if your information is correct":
+            raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = "Something wrong with your phone number. Please, check if your information is correct")
+    
+    if permission_to_change_number == True:
+        user_model.phone_number = request.phone_number
+        #need to send verefication SMS
+
+    if permission_to_change_email == True:
+        user_model.email = request.email
+        user_model.is_active = False
+        await send_verification_email(request.email)
+
+    db.add(user_model)
+    db.commit()
+

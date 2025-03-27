@@ -36,6 +36,15 @@ class CreateOrderRequest(BaseModel):
     reciever_name: str
     shipping_adress: str
 
+    model_config = {
+        "json_schema_extra" : {
+            "example" : {
+                "reciever_name" : "Tohru", 
+                "shipping_adress" : "Miss Kobayashi's Home"
+            }
+        }
+    }
+
 
 @router.get("/show-basket", status_code = status.HTTP_200_OK)
 async def show_basket(db: db_dependancy, user: user_dependency):
@@ -136,6 +145,11 @@ async def create_order(db: db_dependancy, user: user_dependency, order: CreateOr
         total_price += good.quantity * (db.query(Goods).filter(Goods.id == good.goods_id).first()).price
         db.add(order_item)
         db.commit()
+        change_goods_quantity_model = db.query(Goods).filter(Goods.id == order_item.goods_id).first()
+        change_goods_quantity_model.quantity -= order_item.quantity
+        db.add(change_goods_quantity_model)
+        db.commit()
+
 
     create_order_model.total_price = total_price
     db.add(create_order_model)
@@ -145,3 +159,33 @@ async def create_order(db: db_dependancy, user: user_dependency, order: CreateOr
     for good in goods_in_basket:
         db.query(Basket).filter(Basket.user_id == user.get("id")).filter(good.goods_id == Basket.goods_id).delete()
         db.commit()
+
+
+@router.delete("/cancel-order", status_code = status.HTTP_200_OK)
+async def cancel_order(db: db_dependancy, user: user_dependency, order_number: int):
+    if user is None:
+        return {"message": "Sorry, but at this moment if you want to add good to the basket you need to create accout first"}
+        #here I want to add LocalStorage so user can add goods to the basket without registration 
+        #and list of the goods will be stored in the local storage even if user closed the site
+
+    order_info = db.query(Orders).filter(Orders.order_number == order_number).filter(Orders.user_id == user.get("id")).first()
+
+    if order_info is None:
+        raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail = "No such order")
+
+    order_items_to_cancel = []
+    order_items_to_cancel = db.query(OrderItem).filter(OrderItem.order_id == order_info.order_number).all()
+    for item in order_items_to_cancel:
+        add_back_to_goods = item.quantity
+        good_model = db.query(Goods).filter(Goods.id == item.goods_id).first()
+        good_model.quantity += add_back_to_goods
+        db.add(good_model)
+        db.commit()
+
+        #db.query(OrderItem).filter(OrderItem.goods_id == item.goods_id).filter(OrderItem.order_id == item.order_id).delete()
+        #db.commit()
+
+    #db.query(Orders).filter(Orders.order_number == order_info.order_number).delete()
+    order_info.status = "canceled"
+    db.add(order_info)
+    db.commit()

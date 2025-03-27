@@ -76,10 +76,10 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
         user_id: int = payload.get("id")
         user_role: str = payload.get("role")
         if username is None or user_id is None:
-            raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail = "Could not validate user")
+            raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail = "Could not validate user err 1")
         return {"username":username, "id":user_id, "role":user_role}
     except JWTError:
-        raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail = "Could not validate user")
+        raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail = "Could not validate user. JWTError")
 
 
 def check_if_user_enter_email_or_phone_num(login: str):
@@ -142,7 +142,7 @@ async def create_user(db: db_dependancy, new_user_request: CreateUserRequest):
         db.commit()
     
     else:
-        raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = "User enter invalid phone number or password")
+        raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = "User enter invalid phone number or email")
     
 
 
@@ -152,8 +152,17 @@ async def login_for_access_token(form_data : Annotated[OAuth2PasswordRequestForm
     user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
         raise HTTPException(status_code = status.HTTP_404_NOT_FOUND,  detail = "Could not validate user")
-    token = create_access_token(user.email, user.id, user.role, timedelta(minutes = 20))
-    return {"access_token":token, "token_type":"bearer"}
+    if(user.is_active == True):
+        if(user.email is not None):
+            token = create_access_token(user.email, user.id, user.role, timedelta(minutes = 200))
+        elif(user.phone_number is not None):
+            token = create_access_token(user.phone_number, user.id, user.role, timedelta(minutes = 200))
+        
+        return {"access_token":token, "token_type":"bearer"}
+    elif(user.is_active == False):
+        return {"message": "Please,  activate your account"}
+
+
 
 
 

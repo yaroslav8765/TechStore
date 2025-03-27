@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from typing import Annotated
 from routers.auth import get_current_user
 from starlette import status
-from models import Goods, Basket
+from models import Goods, Basket, OrderItem, Orders
 
 
 router = APIRouter(
@@ -32,6 +32,9 @@ class EditTheBasketRequest(BaseModel):
     goods_id: int            
     new_quantity: int
 
+class CreateOrderRequest(BaseModel):
+    reciever_name: str
+    shipping_adress: str
 
 
 @router.get("/show-basket", status_code = status.HTTP_200_OK)
@@ -58,16 +61,21 @@ async def add_to_the_basket(db: db_dependancy, user: user_dependency, request: A
         raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail = "No goods with such ID")
     if goods_info.quantity < request.quantity:
         raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = f"We don`t have enought goods. There is only {goods_info.quantity}")
-
-    add_to_basket_model = Basket(
-        goods_id = goods_info.id,
-        user_id = user.get("id"),
-        quantity = request.quantity,
-        price_for_the_one = goods_info.price
-    )
-    db.add(add_to_basket_model)
-    db.commit()
-    
+    user_basket_info = db.query(Basket).filter(Basket.user_id == user.get("id")).filter(Basket.goods_id == request.goods_id).first()
+    if user_basket_info is not None:
+        user_basket_info.quantity += request.quantity
+        db.add(user_basket_info)
+        db.commit()
+    else:
+        add_to_basket_model = Basket(
+            goods_id = goods_info.id,
+            user_id = user.get("id"),
+            quantity = request.quantity,
+            price_for_the_one = goods_info.price
+        )
+        db.add(add_to_basket_model)
+        db.commit()
+        
     
 
 @router.put("/basket-edit",status_code = status.HTTP_202_ACCEPTED)
@@ -79,7 +87,6 @@ async def edit_basket(db: db_dependancy, user: user_dependency, request: EditThe
     edit_basket_model = db.query(Basket).filter(Basket.user_id == user.get("id")).filter(Basket.goods_id == request.goods_id).first()
     if edit_basket_model is None:
         raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail = "No goods with such ID")
-    #Короче сделать, если товар есть в корзине, то вместо добавления новой записи, чделать, чтобы оно добавляло в к старой
     edit_basket_model.quantity = request.new_quantity
 
     db.add(edit_basket_model)
@@ -100,8 +107,41 @@ async def delete_goods_from_basket(db: db_dependancy, user: user_dependency, goo
     db.commit()
 
 
+@router.post("/order", status_code = status.HTTP_200_OK)
+async def create_order(db: db_dependancy, user: user_dependency, order: CreateOrderRequest):
+    if user is None:
+        return {"message": "Sorry, but at this moment if you want to add good to the basket you need to create accout first"}
+        #here I want to add LocalStorage so user can add goods to the basket without registration 
+        #and list of the goods will be stored in the local storage even if user closed the site
 
+    create_order_model = Orders(
+        reciever_name = order.reciever_name,
+        shipping_adress = order.shipping_adress,
+        user_id = user.get("id"),
+        total_price = 1
+    )
+    db.add(create_order_model)
+    db.commit()
 
+    total_price = 0
 
+    goods_in_basket = []
+    goods_in_basket = db.query(Basket).filter(Basket.user_id == user.get("id")).all()
+    for good in goods_in_basket:
+        order_item = OrderItem(
+            goods_id = good.goods_id,
+            quantity = good.quantity,
+            order_id = create_order_model.order_number
+        )
+        total_price += good.quantity * (db.query(Goods).filter(Goods.id == good.goods_id).first()).price
+        db.add(order_item)
+        db.commit()
 
+    create_order_model.total_price = total_price
+    db.add(create_order_model)
+    db.commit()
 
+    #clear_basket
+    for good in goods_in_basket:
+        db.query(Basket).filter(Basket.user_id == user.get("id")).filter(good.goods_id == Basket.goods_id).delete()
+        db.commit()

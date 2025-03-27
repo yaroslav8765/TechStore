@@ -2,6 +2,7 @@ from database import Base
 from sqlalchemy import Column, Integer, Float, String, Boolean, ForeignKey, DateTime
 from datetime import datetime, timezone, timedelta
 
+utc_plus_2 = timezone(timedelta(hours=2))
 
 class Users(Base):
     __tablename__ = 'users'
@@ -73,14 +74,22 @@ class Basket(Base):
     quantity                = Column(Integer)
     price_for_the_one       = Column(Float)
 
-utc_plus_2 = timezone(timedelta(hours=2))
 class Orders(Base):
     __tablename__ = "orders"
 
     order_number    = Column(Integer, primary_key=True, index=True)
     user_id         = Column(Integer, ForeignKey("users.id"))
+    reciever_name   = Column(String)
+    shipping_adress = Column(String)
     total_price     = Column(Float, nullable=False)
     status          = Column(String, default="pending")
     created_at      = Column(DateTime, default=datetime.now(utc_plus_2))
     updated_at      = Column(DateTime, default=datetime.now(utc_plus_2), onupdate=datetime.now(utc_plus_2))
 
+class OrderItem(Base):
+    __tablename__ = "order_item"
+
+    id              = Column(Integer, primary_key=True, index=True)  
+    order_id        = Column(Integer, ForeignKey("orders.order_number"))
+    goods_id        = Column(Integer, ForeignKey("goods.id"))
+    quantity        = Column(Integer)

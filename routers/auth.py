@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from models import Users
 from passlib.context import CryptContext
 from jose import jwt, JWTError
-from routers.email_verification import send_verification_email
+from routers.email_actions.email_verification import send_verification_email
 from config import settings
 
 import phonenumbers

@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from database import engine
 from models import Base
-from routers import auth, email_verification, admin, users
+from routers import auth, admin, users
+from routers.email_actions import email_verification
 app = FastAPI()
 
 Base.metadata.create_all(bind = engine) #создать таблицы в БД, если их ещё нема

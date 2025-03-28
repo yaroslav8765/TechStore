@@ -6,8 +6,9 @@ from typing import Annotated
 from routers.auth import get_current_user
 from starlette import status
 from models import Goods, Basket, OrderItem, Orders, Users
-from routers.email_verification import send_verification_email
+from routers.email_actions.email_verification import send_verification_email
 from routers.auth import check_if_user_enter_email_or_phone_num
+from routers.email_actions.email_mailing import send_order_details, send_cancel_order_notification
 router = APIRouter(
     prefix = "/user",
     tags=["/user"]
@@ -26,11 +27,11 @@ user_dependency = Annotated[dict, Depends(get_current_user)]
 
 class AddToTheBasketRequest(BaseModel):
     goods_id: int            
-    quantity: int = Field(gt = 1)
+    quantity: int = Field(gt = 0)
 
 class EditTheBasketRequest(BaseModel):
     goods_id: int            
-    new_quantity: int = Field(gt = 1)
+    new_quantity: int = Field(gt = 0)
 
 class CreateOrderRequest(BaseModel):
     reciever_name: str = Field(min_length = 2, max_length = 30)
@@ -170,7 +171,12 @@ async def create_order(db: db_dependancy, user: user_dependency, order: CreateOr
     create_order_model.total_price = total_price
     db.add(create_order_model)
     db.commit()
+    
 
+    user_info = db.query(Users).filter(Users.id == user.get("id")).first()
+    if(user_info.email is not None):
+        await send_order_details(user_info.email, create_order_model.order_number, db)
+    
     #clear_basket
     for good in goods_in_basket:
         db.query(Basket).filter(Basket.user_id == user.get("id")).filter(good.goods_id == Basket.goods_id).delete()
@@ -205,6 +211,9 @@ async def cancel_order(db: db_dependancy, user: user_dependency, order_number: i
     order_info.status = "canceled"
     db.add(order_info)
     db.commit()
+    user_info = db.query(Users).filter(Users.id == user.get("id")).first()
+    if(user_info.email is not None):
+        await send_cancel_order_notification(user_info.email, order_info.order_number)
 
 @router.put("/edit-user-info", status_code = status.HTTP_202_ACCEPTED)
 async def edit_user(db: db_dependancy, user: user_dependency, request: EditUserRequest):

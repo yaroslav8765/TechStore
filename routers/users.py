@@ -104,7 +104,7 @@ async def add_to_the_basket(db: db_dependancy, user: user_dependency, request: A
         
     
 
-@router.put("/basket-edit",status_code = status.HTTP_202_ACCEPTED)
+@router.put("/basket-edit",status_code = status.HTTP_200_OK)
 async def edit_basket(db: db_dependancy, user: user_dependency, request: EditTheBasketRequest ):
     if user is None:
         return {"message": "Sorry, but at this moment if you want to add good to the basket you need to create accout first"}

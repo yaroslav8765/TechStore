@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from database import engine
 from models import Base
 from routers import auth, admin, users
-from routers.goods_actions import goods_actions_user, goods_actions_admin
+from routers.goods_actions import goods_actions, goods_actions_admin
 from routers.email_actions import email_verification
 app = FastAPI()
 
@@ -25,5 +25,6 @@ async def test(test_login:str):
 app.include_router(auth.router)
 app.include_router(email_verification.router)
 app.include_router(admin.router)
-app.include_router(users.router)
 app.include_router(goods_actions_admin.router)
+app.include_router(goods_actions.router)
+app.include_router(users.router)

@@ -4,13 +4,14 @@ from pydantic import BaseModel
 from starlette import status
 from sqlalchemy.orm import Session
 from database import SessionLocal
-from models import Users, Orders, Smartphones, Goods 
+from models import Users, Orders, Smartphones, Laptops, Goods 
 from routers.auth import get_current_user
 from routers.goods_actions.request_models.smartphone import AddEditSmartphoneRequest, add_smartphones_model, edit_smartphone_model
+from routers.goods_actions.request_models.laptop import AddEditLaptopRequest, add_laptop_model, edit_laptop_model
 
 router = APIRouter(
     prefix = "/admin-panel",
-    tags=["admin-panel"]
+    tags=["good_actions_admin"]
 )
 
 def get_db():
@@ -77,50 +78,7 @@ def edit_goods_model(goods_request: AddEditGoodsRequest, old_good: Goods):
     return old_good
 
 
-@router.put("/change-order-status/complecting/", status_code = status.HTTP_202_ACCEPTED)
-async def change_order_status_to_complecting(db: db_dependancy, user: user_dependency, order_number: int):
-    if user is None or user.get('role') != 'admin':
-        raise HTTPException(status_code=401, detail='Authentication Failed')
-    
-    oreder_model =  db.query(Orders).filter(Orders.order_number == order_number).first()
-    oreder_model.status = "Complecting"
-    db.commit()
 
-@router.put("/change-order-status/canecled/", status_code = status.HTTP_202_ACCEPTED)
-async def change_order_status_to_canecled(db: db_dependancy, user: user_dependency, order_number: int):
-    if user is None or user.get('role') != 'admin':
-        raise HTTPException(status_code=401, detail='Authentication Failed')
-    
-    oreder_model =  db.query(Orders).filter(Orders.order_number == order_number).first()
-    oreder_model.status = "Canceled"
-    db.commit()
-
-@router.put("/change-order-status/sended/", status_code = status.HTTP_202_ACCEPTED)
-async def change_order_status_to_sended(db: db_dependancy, user: user_dependency, order_number: int):    
-    if user is None or user.get('role') != 'admin':
-        raise HTTPException(status_code=401, detail='Authentication Failed')
-    
-    oreder_model =  db.query(Orders).filter(Orders.order_number == order_number).first()
-    oreder_model.status = "Sended"
-    db.commit()
-
-@router.put("/change-order-status/waiting-for-reciever/", status_code = status.HTTP_202_ACCEPTED)
-async def change_order_status_to_waiting_for_reciever(db: db_dependancy, user: user_dependency, order_number: int):    
-    if user is None or user.get('role') != 'admin':
-        raise HTTPException(status_code=401, detail='Authentication Failed')
-    
-    oreder_model =  db.query(Orders).filter(Orders.order_number == order_number).first()
-    oreder_model.status = "Waiting for reciever"
-    db.commit()
-
-@router.put("/change-order-status/recieved/", status_code = status.HTTP_202_ACCEPTED)
-async def change_order_status_to_recieved(db: db_dependancy, user: user_dependency, order_number: int):    
-    if user is None or user.get('role') != 'admin':
-        raise HTTPException(status_code=401, detail='Authentication Failed')
-    
-    oreder_model =  db.query(Orders).filter(Orders.order_number == order_number).first()
-    oreder_model.status = "Recieved"
-    db.commit()
 
 
 
@@ -176,3 +134,42 @@ async def edit_smartphone_in_db(db: db_dependancy, user: user_dependency, charac
     db.commit()
 
 
+#############################################################################################################
+#                                                                                                           #
+#                                                Laptops                                                    #
+#                                                                                                           #
+#############################################################################################################
+@router.post("/add-goods/laptop", status_code = status.HTTP_201_CREATED)#                              Laptop                                   
+async def add_laptop_to_the_db(db: db_dependancy, user: user_dependency, characteristics_request: AddEditLaptopRequest, goods_request: AddEditGoodsRequest):
+    if user is None or user.get('role') != 'admin':
+        raise HTTPException(status_code=401, detail='Authentication Failed')
+    
+    add_goods = add_goods_model(goods_request)
+    db.add(add_goods)
+    db.commit()
+
+    new_goods_id = db.query(Goods).filter(Goods.name == goods_request.name, 
+                                          Goods.price == goods_request.price, 
+                                          Goods.description == goods_request.description).first()
+    
+    add_smartphone_model = add_laptop_model(characteristics_request, new_goods_id.id)
+    db.add(add_smartphone_model)
+    db.commit()
+
+
+@router.put("/edit-goods/laptop", status_code = status.HTTP_200_OK)#                                    Laptop         
+async def edit_laptop_in_db(db: db_dependancy, user: user_dependency, characteristics_request: AddEditLaptopRequest, goods_request: AddEditGoodsRequest, goods_id: int):
+    if user is None or user.get('role') != 'admin':
+        raise HTTPException(status_code=401, detail='Authentication Failed')
+    
+    old_good = db.query(Goods).filter(Goods.id == goods_id).first()
+    if old_good is None:
+        raise HTTPException(status_code=404, detail='Good not found')
+    edit_goods_model(goods_request, old_good)
+    db.commit()
+
+    old_smartphone = db.query(Laptops).filter(Laptops.goods_id == old_good.id).first()
+    if old_smartphone is None:
+        raise HTTPException(status_code=404, detail='Good not found')
+    edit_laptop_model(characteristics_request, old_smartphone)
+    db.commit()

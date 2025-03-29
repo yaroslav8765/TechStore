@@ -9,9 +9,10 @@ from models import Goods, Basket, OrderItem, Orders, Users
 from routers.email_actions.email_verification import send_verification_email
 from routers.auth import check_if_user_enter_email_or_phone_num
 from routers.email_actions.email_mailing import send_order_details, send_cancel_order_notification
+
 router = APIRouter(
     prefix = "/user",
-    tags=["/user"]
+    tags=["user"]
 )
 
 

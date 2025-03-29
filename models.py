@@ -66,6 +66,41 @@ class Smartphones(Base):
     Country_of_manufacture  = Column(String)
     Brand = Column(String)
 
+class Laptops(Base):
+    __tablename__ = "laptops"
+
+    id                      = Column(Integer, primary_key=True, index=True)
+    goods_id                = Column(Integer, ForeignKey("goods.id"))
+    Display_diagonal        = Column(Float)
+    Screen_resolution       = Column(String)
+    Screen_type             = Column(String, default=None)
+    Screen_refresh_rate     = Column(String, default=None)
+    Processor_Model         = Column(String)
+    Number_of_Cores         = Column(Integer)
+    RAM                     = Column(String)
+    Built_in_Memory         = Column(String)
+    Expandable_Memory       = Column(String, default=None)
+    GPU_Model               = Column(String, default=None)
+    VRAM                    = Column(String, default=None)
+    Main_camera             = Column(String, default=None)
+    Front_camera            = Column(String, default=None)
+    Maximum_video_resolution= Column(String, default=None)
+    Wi_Fi_Standards         = Column(String, default=None)
+    Bluetooth               = Column(String, default=None)
+    USB_Ports               = Column(String, default=None)
+    HDMI_Port               = Column(Boolean, default=None)
+    Thunderbolt_Support     = Column(Boolean, default=None)
+    Battery_capacity        = Column(String, default=None)
+    Battery_life            = Column(String, default=None)
+    Height                  = Column(Integer)
+    Width                   = Column(Integer)
+    Depth                   = Column(Integer)
+    Weight                  = Column(Integer)
+    Manufacturer_color      = Column(String)
+    Warranty_period         = Column(String) 
+    Country_of_manufacture  = Column(String)
+    Brand                   = Column(String)
+
 class Basket(Base):
     __tablename__ = "basket"
     id                      = Column(Integer, primary_key=True, index=True)  

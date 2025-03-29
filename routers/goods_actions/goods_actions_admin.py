@@ -77,26 +77,69 @@ def edit_goods_model(goods_request: AddEditGoodsRequest, old_good: Goods):
     return old_good
 
 
+@router.put("/change-order-status/complecting/", status_code = status.HTTP_202_ACCEPTED)
+async def change_order_status_to_complecting(db: db_dependancy, user: user_dependency, order_number: int):
+    if user is None or user.get('role') != 'admin':
+        raise HTTPException(status_code=401, detail='Authentication Failed')
+    
+    oreder_model =  db.query(Orders).filter(Orders.order_number == order_number).first()
+    oreder_model.status = "Complecting"
+    db.commit()
 
+@router.put("/change-order-status/canecled/", status_code = status.HTTP_202_ACCEPTED)
+async def change_order_status_to_canecled(db: db_dependancy, user: user_dependency, order_number: int):
+    if user is None or user.get('role') != 'admin':
+        raise HTTPException(status_code=401, detail='Authentication Failed')
+    
+    oreder_model =  db.query(Orders).filter(Orders.order_number == order_number).first()
+    oreder_model.status = "Canceled"
+    db.commit()
 
+@router.put("/change-order-status/sended/", status_code = status.HTTP_202_ACCEPTED)
+async def change_order_status_to_sended(db: db_dependancy, user: user_dependency, order_number: int):    
+    if user is None or user.get('role') != 'admin':
+        raise HTTPException(status_code=401, detail='Authentication Failed')
+    
+    oreder_model =  db.query(Orders).filter(Orders.order_number == order_number).first()
+    oreder_model.status = "Sended"
+    db.commit()
 
+@router.put("/change-order-status/waiting-for-reciever/", status_code = status.HTTP_202_ACCEPTED)
+async def change_order_status_to_waiting_for_reciever(db: db_dependancy, user: user_dependency, order_number: int):    
+    if user is None or user.get('role') != 'admin':
+        raise HTTPException(status_code=401, detail='Authentication Failed')
+    
+    oreder_model =  db.query(Orders).filter(Orders.order_number == order_number).first()
+    oreder_model.status = "Waiting for reciever"
+    db.commit()
 
-
-
-
-
+@router.put("/change-order-status/recieved/", status_code = status.HTTP_202_ACCEPTED)
+async def change_order_status_to_recieved(db: db_dependancy, user: user_dependency, order_number: int):    
+    if user is None or user.get('role') != 'admin':
+        raise HTTPException(status_code=401, detail='Authentication Failed')
+    
+    oreder_model =  db.query(Orders).filter(Orders.order_number == order_number).first()
+    oreder_model.status = "Recieved"
+    db.commit()
 
 
 
 ##################################################################
 #                                                                # 
-#                           ADD & EDIT                           # 
+#                          ADD & EDIT                            # 
 #                           DIFFERETN                            # 
 #                             GOODS                              # 
 #                            SECTION                             # 
 #                                                                # 
 ##################################################################
 
+
+
+#############################################################################################################
+#                                                                                                           #
+#                                                Smartphones                                                #
+#                                                                                                           #
+#############################################################################################################
 @router.post("/add-goods/smartphone", status_code = status.HTTP_201_CREATED)
 async def add_smartphone_to_the_db(db: db_dependancy, user: user_dependency, characteristics_request: AddEditSmartphoneRequest, goods_request: AddEditGoodsRequest):
     if user is None or user.get('role') != 'admin':

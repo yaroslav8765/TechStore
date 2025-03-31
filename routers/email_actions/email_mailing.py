@@ -4,9 +4,9 @@ from jose import jwt
 from datetime import datetime, timedelta, timezone
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 from sqlalchemy.orm import Session
-from database import SessionLocal
-from models import Users, OrderItem, Orders, Goods
-from config import settings
+from ...database import SessionLocal
+from ...models import Users, OrderItem, Orders, Goods
+from ...config import settings
 from starlette import status
 
 

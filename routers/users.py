@@ -1,14 +1,14 @@
 from fastapi import APIRouter,Depends, HTTPException
 from pydantic import BaseModel, Field
-from database import SessionLocal
+from ..database import SessionLocal
 from sqlalchemy.orm import Session
 from typing import Annotated
-from routers.auth import get_current_user
+from ..routers.auth import get_current_user
 from starlette import status
-from models import Goods, Basket, OrderItem, Orders, Users
-from routers.email_actions.email_verification import send_verification_email
-from routers.auth import check_if_user_enter_email_or_phone_num
-from routers.email_actions.email_mailing import send_order_details, send_cancel_order_notification
+from ..models import Goods, Basket, OrderItem, Orders, Users
+from ..routers.email_actions.email_verification import send_verification_email
+from ..routers.auth import check_if_user_enter_email_or_phone_num
+from ..routers.email_actions.email_mailing import send_order_details, send_cancel_order_notification
 
 router = APIRouter(
     prefix = "/user",
@@ -269,3 +269,12 @@ async def edit_user(db: db_dependancy, user: user_dependency, request: EditUserR
     db.add(user_model)
     db.commit()
 
+##########################################################################################################
+#
+# 
+# 
+#                                  NEED TO ADD FORGOT PASSWORD FUNCTIONALITY
+# 
+# 
+#    
+# ########################################################################################################

@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import  Optional
-from models import Laptops
+from ....models import Laptops
 
 class AddEditLaptopRequest(BaseModel):
     Display_diagonal: float

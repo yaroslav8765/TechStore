@@ -2,16 +2,16 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from database import SessionLocal
+from ..database import SessionLocal
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from starlette import status
 from pydantic import BaseModel, Field
-from models import Users
+from ..models import Users
 from passlib.context import CryptContext
 from jose import jwt, JWTError
-from routers.email_actions.email_verification import send_verification_email
-from config import settings
+from ..routers.email_actions.email_verification import send_verification_email
+from ..config import settings
 
 import phonenumbers
 from phonenumbers import carrier

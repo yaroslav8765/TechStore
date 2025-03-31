@@ -3,11 +3,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from starlette import status
 from sqlalchemy.orm import Session
-from database import SessionLocal
-from models import Users, Orders, Smartphones, Laptops, Goods 
-from routers.auth import get_current_user
-from routers.goods_actions.request_models.smartphone import AddEditSmartphoneRequest, add_smartphones_model, edit_smartphone_model
-from routers.goods_actions.request_models.laptop import AddEditLaptopRequest, add_laptop_model, edit_laptop_model
+from ...database import SessionLocal
+from ...models import Users, Orders, Smartphones, Laptops, Goods 
+from ...routers.auth import get_current_user
+from ...routers.goods_actions.request_models.smartphone import AddEditSmartphoneRequest, add_smartphones_model, edit_smartphone_model
+from ...routers.goods_actions.request_models.laptop import AddEditLaptopRequest, add_laptop_model, edit_laptop_model
 
 router = APIRouter(
     prefix = "/admin-panel",

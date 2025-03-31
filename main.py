@@ -20,6 +20,7 @@ def health_check():
     return {"status" : "healthy"}
 
 
+
 app.include_router(auth.router)
 app.include_router(email_verification.router)
 app.include_router(admin.router)

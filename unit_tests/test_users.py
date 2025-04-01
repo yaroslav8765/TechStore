@@ -1,5 +1,5 @@
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import sessionmaker
 from ..database import Base
@@ -7,6 +7,7 @@ from ..main import app
 from ..routers.users import get_db, get_current_user
 from fastapi.testclient import TestClient
 from fastapi import status
+from ..models import Smartphones, Laptops, Orders, OrderItem, Basket, Goods
 
 SQLALCHEMY_DATABESE_URL = "sqlite:///./testdb.db"
 
@@ -36,30 +37,137 @@ app.dependency_overrides[get_current_user] = override_get_current_user
 
 client = TestClient(app)
 
+@pytest.fixture
+def test_basket():
+    basket = Basket(
+        id = 1,
+        goods_id = 2,
+        user_id = 1,
+        quantity = 3,
+        price_for_the_one = 999.89
+    )
 
-
-class User:
-    def __init__(self, id: int, email: str, phone_number: str, first_name: str, last_name: str, hashed_password: str, is_active: bool, role: str):
-        self.id = id
-        self.email = email
-        self.phone_number = phone_number
-        self.first_name = first_name
-        self.hashed_password = hashed_password
-        self.last_name = last_name
-        self.is_active = is_active
-        self.role = role
+    db = TestingSessionLocal()
+    db.add(basket)
+    db.commit()
+    yield basket
+    with engine.connect() as connection:
+        connection.execute(text("DELETE FROM basket;"))
+        connection.commit()
 
 @pytest.fixture
-def admin_user():
-    return User(1,"pechorkin2014@gmail.com","+380637014924","Yaroslav","Pechorkin","$2b$12$UDEacrZCnoAygNiJcunqm.NLfmWLtFBT/4yCHapOKWToY8sZmhpXm", True, "admin")
+def test_good():
+    good = Goods(
+        id = 2,
+        name = "Xiaomi 14 Ultra",
+        price = 999.89,
+        description = "Ultra-premium smartphone with a focus on photography and performance.",
+        category = "Smartphones",
+        quantity = "23",
+        image_url = "https://example.com/images/xiaomi_14_ultra.jpg",
+        characteristics_table = "smartphones",
+    )
+
+    db = TestingSessionLocal()
+    db.add(good)
+    db.commit()
+    yield good
+    with engine.connect() as connection:
+        connection.execute(text("DELETE FROM goods;"))
+        connection.commit()       
+
+# class User:
+#     def __init__(self, id: int, email: str, phone_number: str, first_name: str, last_name: str, hashed_password: str, is_active: bool, role: str):
+#         self.id = id
+#         self.email = email
+#         self.phone_number = phone_number
+#         self.first_name = first_name
+#         self.hashed_password = hashed_password
+#         self.last_name = last_name
+#         self.is_active = is_active
+#         self.role = role
+
+# @pytest.fixture
+# def admin_user():
+#     return User(1,"pechorkin2014@gmail.com","+380637014924","Yaroslav","Pechorkin","$2b$12$UDEacrZCnoAygNiJcunqm.NLfmWLtFBT/4yCHapOKWToY8sZmhpXm", True, "admin")
+
+# @pytest.fixture
+# def average_user():
+#     return User(1,"pechorkin2014@gmail.com","+380637014924","Yaroslav","Pechorkin","$2b$12$UDEacrZCnoAygNiJcunqm.NLfmWLtFBT/4yCHapOKWToY8sZmhpXm", True, "user")
+
+# @pytest.fixture
+# def not_authenticated_user():
+#     return 0 #User(1,"pechorkin2014@gmail.com","+380637014924","Yaroslav","Pechorkin","$2b$12$UDEacrZCnoAygNiJcunqm.NLfmWLtFBT/4yCHapOKWToY8sZmhpXm", True, "admin")
 
 
-
-def test_user_initialization(admin_user):
-    assert admin_user.first_name == "Yaroslav"
-
-
-def test_show_users_basket():
+def test_show_users_basket(test_basket):
     response = client.get("/user/show-basket")
-    print(response.json()) 
     assert response.status_code == status.HTTP_200_OK
+    assert response.json() == [{"id": 1, "goods_id": 2,"user_id": 1,"quantity": 3, "price_for_the_one": 999.89 }]
+
+def test_add_to_the_basket(test_basket, test_good):
+    request_data = {
+        "goods_id": 2,
+        "quantity": 5,
+        }
+    response = client.post("/user/add-to-basket", json = request_data)
+    assert response.status_code == status.HTTP_201_CREATED
+
+    user = {"username": "pechorkin2014@gmail.com", "id": 1, "role": "user"}
+    db = TestingSessionLocal()
+    model = db.query(Basket).filter(Basket.user_id == user.get("id")).filter(Basket.goods_id == request_data.get("goods_id")).first()
+    assert model.user_id == user.get("id")
+    assert model.quantity == request_data.get("quantity") + (test_basket.quantity - request_data.get("quantity"))
+    assert model.goods_id == request_data.get("goods_id")
+    assert model.price_for_the_one == test_good.price
+
+def test_add_to_the_basket_unexisting_item(test_good):
+    request_data = {
+        "goods_id": 999,
+        "quantity": 5,
+        }
+    response = client.post("/user/add-to-basket", json = request_data)
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_add_to_the_basket_more_than_exist(test_good):
+    request_data = {
+        "goods_id": 2,
+        "quantity": 500,
+        }
+    response = client.post("/user/add-to-basket", json = request_data)
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+
+def test_edit_basket(test_basket, test_good):
+    request_data = {
+        "goods_id": 2,
+        "new_quantity": 10,
+        }
+    response = client.put("/user/basket-edit", json = request_data)
+    assert response.status_code == status.HTTP_200_OK
+
+    user = {"username": "pechorkin2014@gmail.com", "id": 1, "role": "user"}
+    db = TestingSessionLocal()
+    model = db.query(Basket).filter(Basket.user_id == user.get("id")).filter(Basket.goods_id == request_data.get("goods_id")).first()
+    assert model.user_id == user.get("id")
+    assert model.quantity == request_data.get("new_quantity")
+    assert model.goods_id == request_data.get("goods_id")
+    assert model.price_for_the_one == test_basket.price_for_the_one
+
+def test_edit_basket_invalid_id(test_basket, test_good):
+    request_data = {
+        "goods_id": 999,
+        "new_quantity": 10,
+        }
+    response = client.put("/user/basket-edit", json = request_data)
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+def test_edit_basket_invalid_quantity(test_basket, test_good):
+    request_data = {
+        "goods_id": 2,
+        "new_quantity": 999,
+        }
+    response = client.put("/user/basket-edit", json = request_data)
+    assert response.status_code == status.HTTP_400_BAD_REQUEST

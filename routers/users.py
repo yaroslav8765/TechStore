@@ -113,7 +113,12 @@ async def edit_basket(db: db_dependancy, user: user_dependency, request: EditThe
         #and list of the goods will be stored in the local storage even if user closed the site
     edit_basket_model = db.query(Basket).filter(Basket.user_id == user.get("id")).filter(Basket.goods_id == request.goods_id).first()
     if edit_basket_model is None:
-        raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail = "No goods with such ID")
+        raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail = "No goods with such ID in your basket")
+    
+    model = db.query(Goods).filter(Goods.id == request.goods_id).first()
+    if model.quantity < request.new_quantity:
+        raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = f"We don`t have enought goods. There is only {model.quantity}")
+
     edit_basket_model.quantity = request.new_quantity
 
     db.add(edit_basket_model)

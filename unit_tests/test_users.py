@@ -7,7 +7,7 @@ from ..main import app
 from ..routers.users import get_db, get_current_user
 from fastapi.testclient import TestClient
 from fastapi import status
-from ..models import Smartphones, Laptops, Orders, OrderItem, Basket, Goods
+from ..models import Smartphones, Laptops, Orders, OrderItem, Basket, Goods, Users
 
 SQLALCHEMY_DATABESE_URL = "sqlite:///./testdb.db"
 
@@ -76,34 +76,45 @@ def test_good():
         connection.execute(text("DELETE FROM goods;"))
         connection.commit()       
 
-# class User:
-#     def __init__(self, id: int, email: str, phone_number: str, first_name: str, last_name: str, hashed_password: str, is_active: bool, role: str):
-#         self.id = id
-#         self.email = email
-#         self.phone_number = phone_number
-#         self.first_name = first_name
-#         self.hashed_password = hashed_password
-#         self.last_name = last_name
-#         self.is_active = is_active
-#         self.role = role
+@pytest.fixture
+def test_user():
+    user = Users(
+        id = 1,
+        email = "pechorkin2014@gmail.com",
+        first_name = "Yaroslav",
+        last_name = "Pechorkin",
+        hashed_password = "35bu35jv5v7jv567jv6347j44j",
+        is_active = True,
+        role = "user",
 
-# @pytest.fixture
-# def admin_user():
-#     return User(1,"pechorkin2014@gmail.com","+380637014924","Yaroslav","Pechorkin","$2b$12$UDEacrZCnoAygNiJcunqm.NLfmWLtFBT/4yCHapOKWToY8sZmhpXm", True, "admin")
+    )
 
-# @pytest.fixture
-# def average_user():
-#     return User(1,"pechorkin2014@gmail.com","+380637014924","Yaroslav","Pechorkin","$2b$12$UDEacrZCnoAygNiJcunqm.NLfmWLtFBT/4yCHapOKWToY8sZmhpXm", True, "user")
+    db = TestingSessionLocal()
+    db.add(user)
+    db.commit()
+    yield user
+    with engine.connect() as connection:
+        connection.execute(text("DELETE FROM users;"))
+        connection.commit()             
 
-# @pytest.fixture
-# def not_authenticated_user():
-#     return 0 #User(1,"pechorkin2014@gmail.com","+380637014924","Yaroslav","Pechorkin","$2b$12$UDEacrZCnoAygNiJcunqm.NLfmWLtFBT/4yCHapOKWToY8sZmhpXm", True, "admin")
 
+#############################################################################
+#                                                                           #
+#                           Show users basket                               #
+#                                                                           #
+#############################################################################
 
 def test_show_users_basket(test_basket):
     response = client.get("/user/show-basket")
     assert response.status_code == status.HTTP_200_OK
     assert response.json() == [{"id": 1, "goods_id": 2,"user_id": 1,"quantity": 3, "price_for_the_one": 999.89 }]
+
+
+#############################################################################
+#                                                                           #
+#                           Add to the basket                               #
+#                                                                           #
+#############################################################################
 
 def test_add_to_the_basket(test_basket, test_good):
     request_data = {
@@ -139,6 +150,11 @@ def test_add_to_the_basket_more_than_exist(test_good):
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
+#############################################################################
+#                                                                           #
+#                           Edit users basket                               #
+#                                                                           #
+#############################################################################
 
 def test_edit_basket(test_basket, test_good):
     request_data = {
@@ -171,3 +187,36 @@ def test_edit_basket_invalid_quantity(test_basket, test_good):
         }
     response = client.put("/user/basket-edit", json = request_data)
     assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+#############################################################################
+#                                                                           #
+#                           Delete from the basket                          #
+#                                                                           #
+#############################################################################
+
+def test_delete_goods_from_basket(test_basket, test_good):
+
+    response = client.delete("/user/basket-delete-good?goods_id=2")
+    assert response.status_code == status.HTTP_202_ACCEPTED
+    db = TestingSessionLocal()
+    info = db.query(Basket).filter(Basket.user_id == 1).all()
+    assert info == []
+
+#############################################################################
+#                                                                           #
+#                               Create order                                #
+#                                                                           #
+#############################################################################
+
+def test_create_order(test_basket, test_good,test_user):
+    request_data = {
+        "reciever_name": "Tohru",
+        "shipping_adress": "Miss Kobayashi's Home"
+    }
+    response = client.post("/user/order", json = request_data)
+    assert response.status_code == status.HTTP_200_OK
+
+    db = TestingSessionLocal()
+    model = db.query(Orders).filter(Orders.order_number == test_user.id).all()
+    assert model == [{"....."}]

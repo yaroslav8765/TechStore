@@ -209,14 +209,27 @@ def test_delete_goods_from_basket(test_basket, test_good):
 #                                                                           #
 #############################################################################
 
-def test_create_order(test_basket, test_good,test_user):
+def test_create_order(test_basket, test_good, test_user):
     request_data = {
         "reciever_name": "Tohru",
         "shipping_adress": "Miss Kobayashi's Home"
     }
-    response = client.post("/user/order", json = request_data)
-    assert response.status_code == status.HTTP_200_OK
-
     db = TestingSessionLocal()
-    model = db.query(Orders).filter(Orders.order_number == test_user.id).all()
-    assert model == [{"....."}]
+
+    goods_in_basket = db.query(Basket).filter(Basket.user_id == test_user.id).count()
+
+    response = client.post("/user/order", json=request_data)
+    
+    assert response.status_code == status.HTTP_200_OK
+    
+    created_order = db.query(Orders).filter(Orders.user_id == test_user.id).first()
+    assert created_order is not None
+    assert created_order.reciever_name == request_data["reciever_name"]
+    assert created_order.shipping_adress == request_data["shipping_adress"]
+    assert created_order.total_price > 0
+
+    order_items = db.query(OrderItem).filter(OrderItem.order_id == created_order.order_number).all()
+    assert len(order_items) == goods_in_basket
+    
+    basket_empty = db.query(Basket).filter(Basket.user_id == test_user.id).count() == 0
+    assert basket_empty

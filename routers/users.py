@@ -189,7 +189,7 @@ async def create_order(db: db_dependancy, user: user_dependency, order: CreateOr
         db.commit()
 
 
-@router.delete("/cancel-order", status_code = status.HTTP_200_OK)
+@router.put("/cancel-order", status_code = status.HTTP_200_OK)
 async def cancel_order(db: db_dependancy, user: user_dependency, order_number: int):
     if user is None:
         return {"message": "Sorry, but at this moment if you want to add good to the basket you need to create accout first"}
@@ -220,6 +220,8 @@ async def cancel_order(db: db_dependancy, user: user_dependency, order_number: i
     user_info = db.query(Users).filter(Users.id == user.get("id")).first()
     if(user_info.email is not None):
         await send_cancel_order_notification(user_info.email, order_info.order_number)
+    
+
 
 @router.put("/edit-user-info", status_code = status.HTTP_202_ACCEPTED)
 async def edit_user(db: db_dependancy, user: user_dependency, request: EditUserRequest):

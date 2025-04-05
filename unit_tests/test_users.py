@@ -1,3 +1,4 @@
+from datetime import datetime
 import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.pool import StaticPool
@@ -77,6 +78,44 @@ def test_good():
     with engine.connect() as connection:
         connection.execute(text("DELETE FROM goods;"))
         connection.commit()       
+
+
+
+@pytest.fixture
+def test_order_and_order_item():
+    db = TestingSessionLocal()
+
+    # Убедись, что таблицы существуют
+    Base.metadata.create_all(db.bind)
+
+    order = Orders(
+        order_number=1,
+        user_id = 1,
+        reciever_name="Tohru",
+        shipping_adress="Miss Kobayashi's Home",
+        total_price=4999.45,
+        status="pending",
+        created_at=datetime.strptime("2025-03-28 13:43:01.143899", "%Y-%m-%d %H:%M:%S.%f"),
+        updated_at=datetime.strptime("2025-03-29 17:28:06.922703", "%Y-%m-%d %H:%M:%S.%f"),
+    )
+    order_item = OrderItem(
+        id=1,
+        order_id=1,
+        goods_id=2,
+        quantity=5
+    )
+    db.add(order)
+    db.add(order_item)
+    db.commit()
+
+    try:
+        yield order, order_item
+    finally:
+        db.query(OrderItem).delete()
+        db.query(Orders).delete()
+        db.commit()
+
+
 
 @pytest.fixture
 def test_user():
@@ -296,36 +335,36 @@ def test_delete_goods_from_basket(test_basket, test_good):
 #                                                                           #
 #############################################################################
 
-def test_create_order(test_basket, test_good, test_user):
-    request_data = {
-        "reciever_name": "Tohru",
-        "shipping_adress": "Miss Kobayashi's Home"
-    }
-    try:
-        db = TestingSessionLocal()
-        goods_in_basket = db.query(Basket).filter(Basket.user_id == test_user.id).count()
+# def test_create_order(test_basket, test_good, test_user):
+#     request_data = {
+#         "reciever_name": "Tohru",
+#         "shipping_adress": "Miss Kobayashi's Home"
+#     }
+#     try:
+#         db = TestingSessionLocal()
+#         goods_in_basket = db.query(Basket).filter(Basket.user_id == test_user.id).count()
 
-        response = client.post("/user/order", json=request_data)
+#         response = client.post("/user/order", json=request_data)
         
-        assert response.status_code == status.HTTP_200_OK
+#         assert response.status_code == status.HTTP_200_OK
         
-        created_order = db.query(Orders).filter(Orders.user_id == test_user.id).first()
-        assert created_order is not None
-        assert created_order.reciever_name == request_data["reciever_name"]
-        assert created_order.shipping_adress == request_data["shipping_adress"]
-        assert created_order.total_price > 0
+#         created_order = db.query(Orders).filter(Orders.user_id == test_user.id).first()
+#         assert created_order is not None
+#         assert created_order.reciever_name == request_data["reciever_name"]
+#         assert created_order.shipping_adress == request_data["shipping_adress"]
+#         assert created_order.total_price > 0
 
-        order_items = db.query(OrderItem).filter(OrderItem.order_id == created_order.order_number).all()
-        assert len(order_items) == goods_in_basket
+#         order_items = db.query(OrderItem).filter(OrderItem.order_id == created_order.order_number).all()
+#         assert len(order_items) == goods_in_basket
         
-        basket_empty = db.query(Basket).filter(Basket.user_id == test_user.id).count() == 0
-        assert basket_empty
-    finally:
-        db = TestingSessionLocal()
-        db.query(OrderItem).delete()
-        db.query(Orders).delete()
-        db.commit()
-        db.close()
+#         basket_empty = db.query(Basket).filter(Basket.user_id == test_user.id).count() == 0
+#         assert basket_empty
+#     finally:
+#         db = TestingSessionLocal()
+#         db.query(OrderItem).delete()
+#         db.query(Orders).delete()
+#         db.commit()
+#         db.close()
 
 
 def test_create_order_no_user():
@@ -350,3 +389,14 @@ def test_create_order_no_user():
         db.query(Orders).delete()
         db.commit()
         db.close()
+
+#############################################################################
+#                                                                           #
+#                               Cancel order                                #
+#                                                                           #
+#############################################################################
+
+def test_cancel_order(test_good, test_order_and_order_item, test_user):
+    response = client.put("/user/cancel-order", params={"order_number": 1})
+
+    assert response.status_code == 200

@@ -11,7 +11,10 @@ from ..models import Users
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 from ..routers.email_actions.email_verification import send_verification_email
+from ..routers.email_actions.email_mailing import send_recover_password_email, decode_verification_token_for_the_password_recover
 from ..config import settings
+from typing import Optional
+
 
 import phonenumbers
 from phonenumbers import carrier
@@ -36,14 +39,13 @@ class CreateUserRequest(BaseModel):
     last_name: str = Field(min_length = 1, max_length = 50, default = None)            
     password: str      
 
-
-
-
 class Token(BaseModel):
     access_token: str
     token_type: str
 
-
+class RecoverSetNewPassword(BaseModel):
+    token:str
+    new_password: str
 
 def get_db():
     db = SessionLocal()
@@ -163,6 +165,32 @@ async def login_for_access_token(form_data : Annotated[OAuth2PasswordRequestForm
         return {"message": "Please,  activate your account"}
 
 
+@router.get("/recover-password", status_code = status.HTTP_200_OK)
+async def recover_password(db: db_dependancy, login: str):
 
+    if check_if_user_enter_email_or_phone_num(login) == "Phone_number":
+        user_info = db.query(Users).filter(Users.phone_number == login).first()
+        if user_info is None:
+            raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = "User with such phone number doesn`t exist")
 
+    elif check_if_user_enter_email_or_phone_num(login) == "Email":
+        user_info = db.query(Users).filter(Users.email == login).first()
+        if user_info is None:
+            raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = "User with such email doesn`t exist")
+            
+    elif check_if_user_enter_email_or_phone_num(login) == "Something wrong with your email or phone number. Please, check if your information is correct":
+        raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = "Invalid e-mail or password")
 
+    await send_recover_password_email(user_info.id, user_info.hashed_password, user_info.email)
+
+    
+@router.put("/recover-set-new-password", status_code = status.HTTP_200_OK)
+async def set_new_recovered_passwoed(db: db_dependancy, request: RecoverSetNewPassword):
+    user_id, hashed_password = decode_verification_token_for_the_password_recover(request.token)
+    #return [{"user_id":user_id, "hashed_password": hashed_password}]
+
+    user_info = db.query(Users).filter(Users.id == user_id, Users.hashed_password == hashed_password).first()
+
+    user_info.hashed_password = bcrypt_context.hash(request.new_password)
+
+    db.commit()

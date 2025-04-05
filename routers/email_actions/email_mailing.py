@@ -95,3 +95,41 @@ async def send_cancel_order_notification(email: str, order_id: int):
 
     fm = FastMail(conf)
     await fm.send_message(message)
+
+
+
+def generate_verification_token_for_the_password_recover(user_id: int, hashed_password: str):
+    expires = datetime.now(timezone.utc) + timedelta(hours=1)
+    payload = {"user_id": user_id,"hashed_password": hashed_password, "exp": expires}
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm= settings.ALGORITHM)
+
+def decode_verification_token_for_the_password_recover(token: str):
+    try:
+        payload = jwt.decode(token,  settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        return payload["user_id"], payload["hashed_password"]
+
+    except jwt.JWTError:
+        return None
+    
+
+async def send_recover_password_email(user_id: int, hashed_password: str, email: str):
+    
+    token = generate_verification_token_for_the_password_recover(user_id, hashed_password)
+
+    verification_url = f"http://127.0.0.1:8000/recover-password/?token={token}"
+    message_body = f"""
+    You just created change password request. If you didn't do that - just ignore this notifocation.
+    In order, to change the password, please, follow the link:
+    {verification_url}
+    """
+
+
+    message = MessageSchema(
+        subject="TechStore. Recover password notidication",
+        recipients=[email],
+        body=message_body,
+        subtype="plain"
+    )
+
+    fm = FastMail(conf)
+    await fm.send_message(message)

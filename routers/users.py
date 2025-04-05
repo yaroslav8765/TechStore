@@ -9,6 +9,7 @@ from ..models import Goods, Basket, OrderItem, Orders, Users
 from ..routers.email_actions.email_verification import send_verification_email
 from ..routers.auth import check_if_user_enter_email_or_phone_num
 from ..routers.email_actions.email_mailing import send_order_details, send_cancel_order_notification
+from passlib.context import CryptContext
 
 router = APIRouter(
     prefix = "/user",
@@ -25,6 +26,7 @@ def get_db():
 
 db_dependancy = Annotated[Session, Depends(get_db)]
 user_dependency = Annotated[dict, Depends(get_current_user)]
+bcrypt_context = CryptContext(schemes=["bcrypt"],deprecated = "auto") 
 
 class AddToTheBasketRequest(BaseModel):
     goods_id: int            
@@ -46,6 +48,10 @@ class CreateOrderRequest(BaseModel):
             }
         }
     }
+
+class RecoverPasswordRequest(BaseModel):
+    old_password: str
+    new_password: str 
 
 class EditUserRequest(BaseModel):
     First_name: str = Field(min_length = 2, max_length = 30)
@@ -276,12 +282,14 @@ async def edit_user(db: db_dependancy, user: user_dependency, request: EditUserR
     db.add(user_model)
     db.commit()
 
-##########################################################################################################
-#
-# 
-# 
-#                                  NEED TO ADD FORGOT PASSWORD FUNCTIONALITY
-# 
-# 
-#    
-# ########################################################################################################
+@router.put("/change-password", status_code = status.HTTP_200_OK)
+async def change_password(user: user_dependency, db: db_dependancy, request: RecoverPasswordRequest):
+    if user is None:
+        raise HTTPException(status_code = status.HTTP_401_UNAUTHORIZED, detail = "Log in first")
+    user_info = db.query(Users).filter(Users.id == user.get("id")).first()
+    if not bcrypt_context.verify(request.old_password, user_info.hashed_password): 
+        raise HTTPException(status_code = status.HTTP_406_NOT_ACCEPTABLE, detail = "Wrong password")
+    
+    user_info.hashed_password = bcrypt_context.hash(request.new_password)
+
+    db.commit

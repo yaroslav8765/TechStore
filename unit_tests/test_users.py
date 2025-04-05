@@ -124,6 +124,7 @@ def test_user():
         email = "pechorkin2014@gmail.com",
         first_name = "Yaroslav",
         last_name = "Pechorkin",
+        phone_number = "+380637014924",
         hashed_password = "35bu35jv5v7jv567jv6347j44j",
         is_active = True,
         role = "user",
@@ -335,36 +336,36 @@ def test_delete_goods_from_basket(test_basket, test_good):
 #                                                                           #
 #############################################################################
 
-# def test_create_order(test_basket, test_good, test_user):
-#     request_data = {
-#         "reciever_name": "Tohru",
-#         "shipping_adress": "Miss Kobayashi's Home"
-#     }
-#     try:
-#         db = TestingSessionLocal()
-#         goods_in_basket = db.query(Basket).filter(Basket.user_id == test_user.id).count()
+def test_create_order(test_basket, test_good, test_user):
+    request_data = {
+        "reciever_name": "Tohru",
+        "shipping_adress": "Miss Kobayashi's Home"
+    }
+    try:
+        db = TestingSessionLocal()
+        goods_in_basket = db.query(Basket).filter(Basket.user_id == test_user.id).count()
 
-#         response = client.post("/user/order", json=request_data)
+        response = client.post("/user/order", json=request_data)
         
-#         assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_200_OK
         
-#         created_order = db.query(Orders).filter(Orders.user_id == test_user.id).first()
-#         assert created_order is not None
-#         assert created_order.reciever_name == request_data["reciever_name"]
-#         assert created_order.shipping_adress == request_data["shipping_adress"]
-#         assert created_order.total_price > 0
+        created_order = db.query(Orders).filter(Orders.user_id == test_user.id).first()
+        assert created_order is not None
+        assert created_order.reciever_name == request_data["reciever_name"]
+        assert created_order.shipping_adress == request_data["shipping_adress"]
+        assert created_order.total_price > 0
 
-#         order_items = db.query(OrderItem).filter(OrderItem.order_id == created_order.order_number).all()
-#         assert len(order_items) == goods_in_basket
+        order_items = db.query(OrderItem).filter(OrderItem.order_id == created_order.order_number).all()
+        assert len(order_items) == goods_in_basket
         
-#         basket_empty = db.query(Basket).filter(Basket.user_id == test_user.id).count() == 0
-#         assert basket_empty
-#     finally:
-#         db = TestingSessionLocal()
-#         db.query(OrderItem).delete()
-#         db.query(Orders).delete()
-#         db.commit()
-#         db.close()
+        basket_empty = db.query(Basket).filter(Basket.user_id == test_user.id).count() == 0
+        assert basket_empty
+    finally:
+        db = TestingSessionLocal()
+        db.query(OrderItem).delete()
+        db.query(Orders).delete()
+        db.commit()
+        db.close()
 
 
 def test_create_order_no_user():
@@ -400,3 +401,74 @@ def test_cancel_order(test_good, test_order_and_order_item, test_user):
     response = client.put("/user/cancel-order", params={"order_number": 1})
 
     assert response.status_code == 200
+
+#############################################################################
+#                                                                           #
+#                             Edit users info                               #
+#                                                                           #
+#############################################################################
+
+def test_edit_users_info(test_user):
+    request_data = {
+        "First_name": "NewFirstName",
+        "Last_name": "NewLastName",
+        "email": "golovachlena1892@gmail.com",
+        "phone_number": "+380937085111",
+    }
+
+    response = client.put("/user/edit-user-info", json=request_data)
+    db = TestingSessionLocal()
+    assert response.status_code == status.HTTP_202_ACCEPTED
+    updated_user = db.query(Users).filter(Users.id == test_user.id).first()
+    assert updated_user.first_name == "NewFirstName"
+    assert updated_user.last_name == "NewLastName"
+    assert updated_user.email == "golovachlena1892@gmail.com"
+    assert updated_user.phone_number == "+380937085111"
+
+def test_edit_users_info_email_exist(test_user):
+    request_data = {
+        "First_name": "NewFirstName",
+        "Last_name": "NewLastName",
+        "email": "pechorkin2014@gmail.com",
+        "phone_number": "+380937085111",
+    }
+    
+    response = client.put("/user/edit-user-info", json=request_data)
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response.json() == {"detail": "User with such email already exist"}
+
+def test_edit_users_info_phone_num_exist(test_user):
+    request_data = {
+        "First_name": "NewFirstName",
+        "Last_name": "NewLastName",
+        "email": "golovachlena1892@gmail.com",
+        "phone_number": "+380637014924",
+    }
+    
+    response = client.put("/user/edit-user-info", json=request_data)
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response.json() == {"detail": "User with such phone number already exist"}
+
+def test_edit_users_info_invalid_email(test_user):
+    request_data = {
+        "First_name": "NewFirstName",
+        "Last_name": "NewLastName",
+        "email": "vasya@chernv.com",
+        "phone_number": "+380937085111",
+    }
+    
+    response = client.put("/user/edit-user-info", json=request_data)
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.json() == {"detail": "Something wrong with your email. Please, check if your information is correct"}
+
+def test_edit_users_info_invalid_phone_num(test_user):
+    request_data = {
+        "First_name": "NewFirstName",
+        "Last_name": "NewLastName",
+        "email": "golovachlena1892@gmail.com",
+        "phone_number": "52672547245",
+    }
+    
+    response = client.put("/user/edit-user-info", json=request_data)
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.json() == {"detail": "Something wrong with your phone number. Please, check if your information is correct"}

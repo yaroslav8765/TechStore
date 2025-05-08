@@ -54,16 +54,16 @@ class RecoverPasswordRequest(BaseModel):
     new_password: str 
 
 class EditUserRequest(BaseModel):
-    First_name: str = Field(min_length = 2, max_length = 30)
-    Last_name: str = Field(min_length = 2, max_length = 50)
+    first_name: str = Field(min_length = 2, max_length = 30)
+    last_name: str = Field(min_length = 2, max_length = 50)
     phone_number: str 
     email: str
 
     model_config = {
         "json_schema_extra" : {
             "example" : {
-                "First_name" : "Empty", 
-                "Last_name" : "Empty",
+                "first_name" : "Empty", 
+                "last_name" : "Empty",
                 "phone_number" : "Empty",
                 "email" : "Empty"
             }
@@ -239,11 +239,11 @@ async def edit_user(db: db_dependancy, user: user_dependency, request: EditUserR
     permission_to_change_email = False
     permission_to_change_number = False
 
-    if request.First_name != "Empty":
-        user_model.first_name = request.First_name
+    if request.first_name != "Empty":
+        user_model.first_name = request.first_name
 
-    if request.Last_name != "Empty":
-        user_model.last_name = request.Last_name
+    if request.last_name != "Empty":
+        user_model.last_name = request.last_name
 
     if request.email != "Empty":
         if check_if_user_enter_email_or_phone_num(request.email) == "Email":

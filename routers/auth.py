@@ -192,5 +192,5 @@ async def set_new_recovered_passwoed(db: db_dependancy, request: RecoverSetNewPa
     user_info = db.query(Users).filter(Users.id == user_id, Users.hashed_password == hashed_password).first()
 
     user_info.hashed_password = bcrypt_context.hash(request.new_password)
-
+    #test str
     db.commit()

@@ -4,7 +4,24 @@ from .models import Base
 from .routers import auth, admin, users
 from .routers.goods_actions import goods_actions, goods_actions_admin
 from .routers.email_actions import email_verification
+
+from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI()
+
+origins = [
+    "http://localhost.tiangolo.com",
+    "https://localhost.tiangolo.com",
+    "http://localhost",
+    "http://localhost:5173",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 Base.metadata.create_all(bind = engine) #создать таблицы в БД, если их ещё нема
 
